@@ -7,7 +7,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
     <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
-    <script src="https://unpkg.com/bpmn-js/dist/bpmn-viewer.development.js"></script>
+    <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
 
     <style>
         body, html { height: 100%; margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; overflow: hidden; }
@@ -21,6 +21,7 @@
             flex-direction: column;
             padding: 15px;
             z-index: 10;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
         #sidebar h3 { margin-top: 0; font-size: 16px; color: #495057; }
         
@@ -38,53 +39,90 @@
         .nav-btn.active { background: #0d6efd; color: white; border-color: #0d6efd; }
 
         /* Área do Diagrama */
-        #canvas { flex-grow: 1; position: relative; background: #fff; }
+        #canvas { flex-grow: 1; position: relative; background: #fff; outline: none; }
 
-        /* Botão Voltar (aparece quando navegamos) */
+        /* --- REMOVER LOGO BPMN.IO --- */
+        .bjs-powered-by { display: none !important; }
+
+        /* Botão Voltar */
         #back-btn {
             position: absolute;
             top: 20px;
             left: 20px;
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: #6c757d;
             color: white;
             border: none;
             border-radius: 20px;
             cursor: pointer;
-            display: none; /* Escondido por padrão */
+            display: none;
             z-index: 100;
+            font-weight: bold;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         #back-btn:hover { background: #5a6268; }
 
-        /* Feedback de elemento clicável */
-        .clickable-element { cursor: pointer !important; }
-        
-        /* Destaque visual simples ao passar o mouse em elementos com link */
-        .djs-element.hover .djs-outline {
-            stroke: #0d6efd !important;
-            stroke-width: 2px !important;
+        /* Controles de Zoom Manuais */
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 5px;
         }
+        .zoom-btn {
+            width: 35px;
+            height: 35px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .zoom-btn:hover { background: #f0f0f0; }
+
+        /* --- DESTAQUE VISUAL (HOVER) --- */
+        /* Essa classe é adicionada via JS quando passa o mouse */
+        .highlight-node .djs-visual > :first-child {
+            fill: #d1e7dd !important;      /* Fundo verde claro */
+            stroke: #198754 !important;    /* Borda verde escuro */
+            stroke-width: 4px !important;  /* Borda grossa */
+            cursor: pointer !important;
+        }
+        
+        /* Cursor mãozinha para indicar clique */
+        .clickable-element { cursor: pointer !important; }
+
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h3>Arquivos BPMN</h3>
+        <h3>Navegador de Projetos</h3>
         <div id="file-list"></div>
     </div>
 
     <div id="canvas">
         <button id="back-btn" onclick="resetToHome()">⬅ Voltar ao Início</button>
+        
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()" title="Aumentar Zoom">+</button>
+            <button class="zoom-btn" onclick="resetZoom()" title="Ajustar à Tela">⟲</button>
+            <button class="zoom-btn" onclick="zoomOut()" title="Diminuir Zoom">-</button>
+        </div>
     </div>
 
     <script>
         // --- 1. CONFIGURAÇÃO DOS ARQUIVOS E LINKS ---
         
-        // Arquivo Principal (Home)
         const homeFile = "assets/bpmn/arq-aprovacao acc-00-00.bpmn";
 
-        // Lista completa para o menu lateral (opcional, mas bom para debug)
+        // Lista do Menu Lateral
         const allFiles = [
             { name: "Fluxo Principal (00-00)", url: homeFile },
             { name: "Processo As Built (01-00)", url: "assets/bpmn/arq-aprovacao acc-01-00.bpmn" },
@@ -92,24 +130,26 @@
             { name: "Processo Executivo (01-02)", url: "assets/bpmn/arq-aprovacao acc-01-02.bpmn" }
         ];
 
-        // LOGICA DE LINKS DOS NÓS (Drill-down)
-        // Chave: Nome exato que está escrito dentro da caixinha no BPMN (case insensitive)
-        // Valor: Caminho do arquivo que deve abrir
+        // Links dos Nós (Texto na caixa -> Arquivo)
         const nodeLinks = {
             "as built": "assets/bpmn/arq-aprovacao acc-01-00.bpmn",
             "anteprojeto": "assets/bpmn/arq-aprovacao acc-01-01.bpmn",
-            "ante-projeto": "assets/bpmn/arq-aprovacao acc-01-01.bpmn", // Caso tenha hífen
+            "ante-projeto": "assets/bpmn/arq-aprovacao acc-01-01.bpmn",
             "executivo": "assets/bpmn/arq-aprovacao acc-01-02.bpmn"
         };
 
         // --- 2. INICIALIZAÇÃO DO VIEWER ---
         
-        const viewer = new BpmnJS({ container: '#canvas' });
+        // Usando NavigatedViewer para permitir mouse zoom/drag
+        const viewer = new BpmnJS({ 
+            container: '#canvas'
+        });
+        
         let currentUrl = "";
 
         async function loadDiagram(url) {
             try {
-                if(currentUrl === url) return; // Evita recarregar o mesmo
+                if(currentUrl === url) return;
 
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Falha ao carregar arquivo');
@@ -119,17 +159,14 @@
                 
                 currentUrl = url;
                 
-                // Ajusta Zoom
+                // Ajusta Zoom inicial para caber na tela
                 viewer.get('canvas').zoom('fit-viewport');
 
-                // Atualiza visual do menu
                 updateMenuActiveState(url);
 
-                // Mostra/Esconde botão de voltar
+                // Mostra botão de voltar se não for a home
                 const backBtn = document.getElementById('back-btn');
                 backBtn.style.display = (url === homeFile) ? 'none' : 'block';
-
-                console.log("Diagrama carregado:", url);
 
             } catch (err) {
                 console.error("Erro:", err);
@@ -137,48 +174,61 @@
             }
         }
 
+        // --- 3. CONTROLES DE ZOOM ---
+        
+        function zoomIn() {
+            viewer.get('canvas').zoom('step-zoom-in');
+        }
+
+        function zoomOut() {
+            viewer.get('canvas').zoom('step-zoom-out');
+        }
+
+        function resetZoom() {
+            viewer.get('canvas').zoom('fit-viewport');
+        }
+
         function resetToHome() {
             loadDiagram(homeFile);
         }
 
-        // --- 3. CONFIGURAÇÃO DE INTERATIVIDADE (CLIQUES) ---
+        // --- 4. CONFIGURAÇÃO DE INTERATIVIDADE (Visual e Clique) ---
 
-        // Escuta eventos do BPMN-JS após carregar o diagrama
         viewer.on('import.done', () => {
             const eventBus = viewer.get('eventBus');
-            const overlays = viewer.get('overlays');
+            const canvas = viewer.get('canvas');
 
             // Quando passar o mouse (Hover)
             eventBus.on('element.hover', function(e) {
                 const name = getElementName(e.element);
                 if (name && nodeLinks[name]) {
-                    e.gfx.style.cursor = 'pointer'; // Muda cursor para mãozinha
-                    viewer.get('canvas').addMarker(e.element.id, 'hover'); // Adiciona classe CSS
+                    // Adiciona a classe CSS que muda a cor e borda
+                    canvas.addMarker(e.element.id, 'highlight-node');
                 }
             });
 
             // Quando o mouse sai (Out)
             eventBus.on('element.out', function(e) {
-                viewer.get('canvas').removeMarker(e.element.id, 'hover');
+                // Remove a classe CSS
+                canvas.removeMarker(e.element.id, 'highlight-node');
             });
 
             // Quando clicar (Click)
             eventBus.on('element.click', function(e) {
                 const name = getElementName(e.element);
                 if (name && nodeLinks[name]) {
-                    console.log("Clicou em:", name, "-> Carregando:", nodeLinks[name]);
                     loadDiagram(nodeLinks[name]);
                 }
             });
         });
 
-        // Função auxiliar para pegar o nome limpo do elemento
+        // Limpeza de nome para evitar erros de digitação/espaços
         function getElementName(element) {
             if (!element.businessObject || !element.businessObject.name) return null;
             return element.businessObject.name.toLowerCase().trim();
         }
 
-        // --- 4. GERAÇÃO DO MENU LATERAL ---
+        // --- 5. GERAÇÃO DO MENU LATERAL ---
         
         const fileList = document.getElementById('file-list');
         allFiles.forEach(file => {
@@ -197,8 +247,7 @@
             });
         }
 
-        // --- 5. INÍCIO AUTOMÁTICO ---
-        // Carrega o arquivo principal ao abrir a página
+        // Início Automático
         loadDiagram(homeFile);
 
     </script>
