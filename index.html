@@ -9,150 +9,118 @@
     <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
 
     <style>
-        /* Zera tudo para garantir tela cheia real */
+        /* Reset e Estrutura Básica */
         * { box-sizing: border-box; }
-        
         body, html { 
-            height: 100%; 
-            width: 100%;
-            margin: 0; 
-            padding: 0;
+            height: 100%; width: 100%; margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; /* Layout Flexbox */
-            overflow: hidden; /* Evita barras de rolagem na página inteira */
+            display: flex; overflow: hidden; background: #f9f9f9;
         }
         
         /* --- MENU LATERAL --- */
         #sidebar {
-            width: 300px; /* Um pouco mais largo para ler melhor */
-            min-width: 300px;
-            background: #f0f2f5;
-            border-right: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            z-index: 20;
-            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+            width: 280px; min-width: 280px;
+            background: #fff; border-right: 1px solid #eee;
+            display: flex; flex-direction: column; padding: 25px;
+            z-index: 20; box-shadow: 0 0 15px rgba(0,0,0,0.03);
         }
-        
         #sidebar h3 { 
-            margin-top: 0; 
-            margin-bottom: 20px; 
-            font-size: 18px; 
-            color: #333; 
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            margin-top: 0; margin-bottom: 25px; font-size: 16px; 
+            color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
         }
-        
         .nav-btn {
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #555;
-            transition: all 0.2s ease;
-            font-weight: 500;
+            padding: 12px 15px; margin-bottom: 8px; background: #fcfcfc;
+            border: 1px solid #eee; border-radius: 8px; cursor: pointer;
+            font-size: 14px; color: #555; transition: all 0.2s ease; font-weight: 500;
         }
-        .nav-btn:hover { 
-            background: #eef2f6; 
-            border-color: #bbb;
-            transform: translateX(2px);
-        }
-        .nav-btn.active { 
-            background: #2563eb; 
-            color: white; 
-            border-color: #2563eb; 
-            box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+        .nav-btn:hover { background: #f0f4f8; border-color: #dbeafe; transform: translateX(3px); color: #2563eb; }
+        .nav-btn.active { background: #2563eb; color: white; border-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); }
+
+        /* --- ÁREA PRINCIPAL DO DIAGRAMA --- */
+        #main-content {
+            flex-grow: 1; position: relative; height: 100vh; overflow: hidden;
         }
 
-        /* --- ÁREA DO DIAGRAMA (AQUI ESTÁ A CORREÇÃO DE TAMANHO) --- */
+        /* O Container BPMN em si */
         #canvas { 
-            flex-grow: 1; /* Ocupa todo o espaço restante */
-            height: 100vh; /* Altura total da tela */
-            width: 100%;
-            position: relative; 
-            background-color: #fff; 
-            /* Grid de fundo opcional para dar noção de espaço */
-            background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
-            background-size: 20px 20px;
+            height: 100%; width: 100%; background-color: #fff;
+            /* Efeito de Transição Suave */
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
+            /* Grid de fundo sutil */
+            background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+            background-size: 25px 25px;
+        }
+        
+        /* Classe adicionada via JS durante a troca de diagrama */
+        #canvas.is-switching {
+            opacity: 0; /* Fade Out */
+            pointer-events: none;
         }
 
         /* Remove logo bpmn.io */
         .bjs-powered-by { display: none !important; }
 
-        /* Botão Voltar Flutuante */
-        #back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            padding: 10px 20px;
-            background: #4b5563;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            display: none;
-            z-index: 100;
-            font-weight: 600;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background 0.2s;
+        /* --- OVERLAY DE CARREGAMENTO (Spinner) --- */
+        #loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); z-index: 50;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;
         }
-        #back-btn:hover { background: #374151; }
+        #loading-overlay.active { opacity: 1; pointer-events: all; }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Controles de Zoom no canto inferior */
+        /* --- CONTROLES E BOTÕES --- */
+        #back-btn {
+            position: absolute; top: 25px; left: 25px; padding: 10px 20px;
+            background: #fff; color: #333; border: 1px solid #ddd;
+            border-radius: 30px; cursor: pointer; display: none; z-index: 100;
+            font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+        }
+        #back-btn:hover { background: #f8f9fa; box-shadow: 0 6px 12px rgba(0,0,0,0.12); }
+
         .zoom-controls {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column; /* Botões verticais ficam melhor no PC */
-            gap: 8px;
-            background: white;
-            padding: 5px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: absolute; bottom: 30px; right: 30px; z-index: 100;
+            display: flex; flex-direction: column; gap: 10px;
+            background: white; padding: 8px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eee;
         }
         .zoom-btn {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #333;
+            width: 42px; height: 42px; background: white; border: none;
+            border-radius: 8px; font-size: 22px; cursor: pointer; color: #555;
+            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
         }
-        .zoom-btn:hover { background: #f9fafb; color: #000; border-color: #ccc; }
+        .zoom-btn:hover { background: #f0f2f5; color: #222; }
 
-        /* --- ESTILOS DE DESTAQUE E INTERAÇÃO --- */
+        /* --- DESTAQUE VISUAL NOS LINKS (Hover) --- */
         .highlight-node .djs-visual > :first-child {
-            fill: #eff6ff !important;      /* Azul bem clarinho */
-            stroke: #2563eb !important;    /* Azul forte */
-            stroke-width: 3px !important;
-            cursor: pointer !important;
+            fill: #eff6ff !important; stroke: #2563eb !important; stroke-width: 3px !important; cursor: pointer !important;
         }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <h3>Projetos</h3>
+        <h3>Mapas de Processo</h3>
         <div id="file-list"></div>
     </div>
 
-    <div id="canvas">
-        <button id="back-btn">⬅ Voltar ao Início</button>
+    <div id="main-content">
+        <div id="loading-overlay"><div class="spinner"></div></div>
+
+        <div id="canvas"></div>
+
+        <button id="back-btn">← Visão Geral</button>
         
         <div class="zoom-controls">
             <button class="zoom-btn" id="btn-zoom-in" title="Aumentar">+</button>
-            <button class="zoom-btn" id="btn-reset" title="Centralizar (100%)">⟲</button>
+            <button class="zoom-btn" id="btn-reset" title="Centralizar">⟲</button>
             <button class="zoom-btn" id="btn-zoom-out" title="Diminuir">-</button>
         </div>
     </div>
@@ -163,12 +131,13 @@
         // --- 1. CONFIGURAÇÃO ---
         const homeFile = "assets/bpmn/arq-aprovacao acc-00-00.bpmn";
         let currentUrl = "";
+        let isTransitioning = false;
 
         const allFiles = [
-            { name: "Fluxo Principal (00-00)", url: homeFile },
-            { name: "Processo As Built (01-00)", url: "assets/bpmn/arq-aprovacao acc-01-00.bpmn" },
-            { name: "Processo Anteprojeto (01-01)", url: "assets/bpmn/arq-aprovacao acc-01-01.bpmn" },
-            { name: "Processo Executivo (01-02)", url: "assets/bpmn/arq-aprovacao acc-01-02.bpmn" }
+            { name: "Visão Geral (00-00)", url: homeFile },
+            { name: "Fluxo As Built (01-00)", url: "assets/bpmn/arq-aprovacao acc-01-00.bpmn" },
+            { name: "Fluxo Anteprojeto (01-01)", url: "assets/bpmn/arq-aprovacao acc-01-01.bpmn" },
+            { name: "Fluxo Executivo (01-02)", url: "assets/bpmn/arq-aprovacao acc-01-02.bpmn" }
         ];
 
         const nodeLinks = {
@@ -179,83 +148,92 @@
         };
 
         // --- 2. INICIALIZAÇÃO DO VIEWER ---
-        // Instancia o visualizador com opções de navegação explícitas
         const viewer = new BpmnJS({ 
             container: '#canvas',
-            height: '100%',
-            width: '100%'
+            // ** CONFIGURAÇÃO IMPORTANTE DO ZOOM **
+            zoomScroll: {
+                enabled: true, // Habilita o módulo
+                toggle: false  // FALSE = Não exige segurar Ctrl para dar zoom com scroll
+            }
         });
 
-        // --- 3. CARREGAMENTO E AJUSTE DE TELA ---
+        // --- 3. CARREGAMENTO COM TRANSIÇÃO ---
         async function loadDiagram(url) {
-            try {
-                if(currentUrl === url) return;
+            if(currentUrl === url || isTransitioning) return;
+            isTransitioning = true;
 
+            // 3.1. Inicia Efeito de Transição (Fade Out)
+            const canvasEl = document.getElementById('canvas');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            canvasEl.classList.add('is-switching');
+            loadingOverlay.classList.add('active');
+
+            // Pequeno delay para o CSS fade-out acontecer antes de carregar o pesado
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            try {
+                // 3.2. Carrega o arquivo
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Falha ao carregar arquivo');
                 const xml = await response.text();
                 
+                // 3.3. Importa no Visualizador
                 await viewer.importXML(xml);
                 currentUrl = url;
 
-                // --- LÓGICA DE ZOOM MELHORADA ---
-                const canvas = viewer.get('canvas');
-                
-                // Primeiro, tenta encaixar na tela
-                canvas.zoom('fit-viewport', 'auto');
-                
-                // Se o "fit" deixar muito pequeno (menos de 80%), forçamos um zoom maior
-                // Isso evita o efeito "espremido"
-                const currentZoom = canvas.zoom();
-                if (currentZoom < 0.8) {
-                    canvas.zoom(0.8, 'auto'); // Define zoom mínimo de 80% e centraliza
-                } else {
-                    canvas.zoom('fit-viewport', 'auto'); // Se já está grande, usa o fit normal
+                // 3.4. Ajusta o Zoom Inteligente
+                const canvasBPMN = viewer.get('canvas');
+                canvasBPMN.zoom('fit-viewport', 'auto'); 
+                const currentZoom = canvasBPMN.zoom();
+                // Se o fit deixou muito pequeno, força um tamanho mínimo legível
+                if (currentZoom < 0.9) {
+                    canvasBPMN.zoom(0.9, 'auto');
                 }
 
-                updateMenuActiveState(url);
-                
-                // Botão voltar
-                const backBtn = document.getElementById('back-btn');
-                backBtn.style.display = (url === homeFile) ? 'none' : 'block';
-                backBtn.onclick = () => loadDiagram(homeFile);
+                updateUIState(url);
 
             } catch (err) {
                 console.error(err);
                 alert("Erro: " + err.message);
+            } finally {
+                // 3.5. Finaliza Transição (Fade In)
+                // Delay para garantir que o diagrama renderizou antes de mostrar
+                setTimeout(() => {
+                    canvasEl.classList.remove('is-switching');
+                    loadingOverlay.classList.remove('active');
+                    isTransitioning = false;
+                }, 200);
             }
         }
 
-        // --- 4. CONTROLES DE ZOOM ---
-        // Garante que o evento funcione independente do foco
-        document.getElementById('btn-zoom-in').addEventListener('click', (e) => {
-            e.stopPropagation();
-            viewer.get('canvas').zoom('step-zoom-in');
-        });
+        // --- 4. FUNÇÕES AUXILIARES DE UI ---
+        function updateUIState(url) {
+            // Menu Active
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.url === url) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            
+            // Botão Voltar
+            const backBtn = document.getElementById('back-btn');
+            backBtn.style.display = (url === homeFile) ? 'none' : 'flex';
+            backBtn.onclick = () => loadDiagram(homeFile);
+        }
 
-        document.getElementById('btn-zoom-out').addEventListener('click', (e) => {
-            e.stopPropagation();
-            viewer.get('canvas').zoom('step-zoom-out');
-        });
+        // --- 5. CONTROLES DE ZOOM MANUAIS ---
+        document.getElementById('btn-zoom-in').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('step-zoom-in'); });
+        document.getElementById('btn-zoom-out').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('step-zoom-out'); });
+        document.getElementById('btn-reset').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('fit-viewport', 'auto'); });
 
-        document.getElementById('btn-reset').addEventListener('click', (e) => {
-            e.stopPropagation();
-            viewer.get('canvas').zoom('fit-viewport', 'auto');
-        });
-
-        // --- 5. EVENTOS DE INTERAÇÃO (Hover/Click) ---
+        // --- 6. EVENTOS DE INTERAÇÃO (Hover/Click) ---
         viewer.on('import.done', () => {
             const eventBus = viewer.get('eventBus');
             const canvas = viewer.get('canvas');
 
-            // Habilitar Scroll Zoom Explicitamente caso navegador bloqueie
-            canvas.zoomScroll = { enabled: true };
-
             eventBus.on('element.hover', function(e) {
                 const name = getElementName(e.element);
-                if (name && nodeLinks[name]) {
-                    canvas.addMarker(e.element.id, 'highlight-node');
-                }
+                if (name && nodeLinks[name]) canvas.addMarker(e.element.id, 'highlight-node');
             });
 
             eventBus.on('element.out', function(e) {
@@ -264,9 +242,7 @@
 
             eventBus.on('element.click', function(e) {
                 const name = getElementName(e.element);
-                if (name && nodeLinks[name]) {
-                    loadDiagram(nodeLinks[name]);
-                }
+                if (name && nodeLinks[name]) loadDiagram(nodeLinks[name]);
             });
         });
 
@@ -275,7 +251,7 @@
             return element.businessObject.name.toLowerCase().trim();
         }
 
-        // --- 6. GERAÇÃO DO MENU ---
+        // --- 7. GERAÇÃO DO MENU ---
         const fileList = document.getElementById('file-list');
         allFiles.forEach(file => {
             const btn = document.createElement('div');
@@ -286,14 +262,7 @@
             fileList.appendChild(btn);
         });
 
-        function updateMenuActiveState(url) {
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                if(btn.dataset.url === url) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-        }
-
-        // Início
+        // Início Automático
         loadDiagram(homeFile);
 
     </script>
