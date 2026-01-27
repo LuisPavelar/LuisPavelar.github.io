@@ -26,8 +26,14 @@ window.CONFIG = {
         {
             titulo: "PROCESSOS",
             itens: [
-                { nome: "Aprovação ACC", tipo: "acao_fluxo", link: "" },
+                // ALTERAÇÃO 1: Link direto para o arquivo geral-macro-fases.bpmn
+                { nome: "Aprovação ACC",         link: "assets/bpmn/geral-macro-fases.bpmn" },
+                
                 { nome: "Manual Processo",       link: "pages/aprovacao-arq-acc.html" },
+                
+                // ALTERAÇÃO 2: Link direto para o arquivo arq-modelagem-familias.bpmn
+                { nome: "Modelagem de família",  link: "assets/bpmn/arq-modelagem-familias.bpmn" },
+                
                 { nome: "Processo Estrutural",   link: "pages/proc-est.html" },
                 { nome: "Processo Elétrica",     link: "pages/proc-ele.html" },
                 { nome: "Processo Hidro",        link: "pages/proc-hidro.html" }
@@ -45,8 +51,10 @@ window.CONFIG = {
 
     // --- CONFIGURAÇÃO DOS FLUXOGRAMAS ---
     fluxogramas: {
-        inicial: "assets/bpmn/geral-macro-fases.bpmn", 
+        // Fluxograma padrão ao abrir o visualizador (mantive o de modelagem conforme seu teste anterior)
+        inicial: "assets/bpmn/arq-modelagem-familias.bpmn", 
         
+        // Links internos clicáveis dentro dos desenhos (se houver caixas com esses nomes)
         links: {
             "as built":     "assets/bpmn/arq-acc-aprovacao asbuilt.bpmn",
             "anteprojeto":  "assets/bpmn/arq-acc-aprovacao anteprojeto.bpmn",
