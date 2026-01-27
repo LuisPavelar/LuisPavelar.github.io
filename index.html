@@ -3,268 +3,246 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navegador de Processos</title>
+    <title>P. AVELAR - WIKI & PROCESSOS</title>
     
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
     <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
-
+    
     <style>
-        /* Reset e Estrutura Básica */
-        * { box-sizing: border-box; }
-        body, html { 
-            height: 100%; width: 100%; margin: 0; padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; overflow: hidden; background: #f9f9f9;
-        }
+        /* --- ESTILOS --- */
+        :root { --primary-color: #002B49; --accent-color: #F26522; --bg-light: #f8f9fa; --text-dark: #333; --sidebar-width: 300px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background-color: var(--bg-light); color: var(--text-dark); }
+
+        /* Sidebar */
+        #sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; transition: margin-left 0.3s ease; z-index: 100; border-right: 1px solid rgba(0,0,0,0.2); }
+        #sidebar.hide { margin-left: calc(var(--sidebar-width) * -1); }
+        .sidebar-header { padding: 25px; background: #001f35; text-align: center; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-sub { display: block; font-size: 0.65rem; font-weight: 300; color: #ccc; margin-top: 5px; opacity: 0.8; }
         
-        /* --- MENU LATERAL --- */
-        #sidebar {
-            width: 280px; min-width: 280px;
-            background: #fff; border-right: 1px solid #eee;
-            display: flex; flex-direction: column; padding: 25px;
-            z-index: 20; box-shadow: 0 0 15px rgba(0,0,0,0.03);
-        }
-        #sidebar h3 { 
-            margin-top: 0; margin-bottom: 25px; font-size: 16px; 
-            color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
-        }
-        .nav-btn {
-            padding: 12px 15px; margin-bottom: 8px; background: #fcfcfc;
-            border: 1px solid #eee; border-radius: 8px; cursor: pointer;
-            font-size: 14px; color: #555; transition: all 0.2s ease; font-weight: 500;
-        }
-        .nav-btn:hover { background: #f0f4f8; border-color: #dbeafe; transform: translateX(3px); color: #2563eb; }
-        .nav-btn.active { background: #2563eb; color: white; border-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); }
+        /* Menu Items */
+        .menu-section { border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .menu-title { padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #eee; user-select: none; transition: background 0.2s; }
+        .menu-title:hover { background-color: rgba(255,255,255,0.1); }
+        .menu-items { list-style: none; background: #00223a; display: block; }
+        .closed { display: none !important; }
+        .menu-items li { padding: 10px 20px 10px 40px; cursor: pointer; font-size: 0.85rem; color: #b0c4de; border-left: 4px solid transparent; transition: all 0.2s; }
+        .menu-items li:hover { background: rgba(255,255,255,0.05); color: white; border-left-color: var(--accent-color); }
 
-        /* --- ÁREA PRINCIPAL DO DIAGRAMA --- */
-        #main-content {
-            flex-grow: 1; position: relative; height: 100vh; overflow: hidden;
-        }
-
-        /* O Container BPMN em si */
-        #canvas { 
-            height: 100%; width: 100%; background-color: #fff;
-            /* Efeito de Transição Suave */
-            opacity: 1;
-            transition: opacity 0.3s ease-in-out;
-            /* Grid de fundo sutil */
-            background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
-            background-size: 25px 25px;
-        }
+        /* Main Area */
+        #main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; background: white; position: relative; }
+        .top-bar { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.03); z-index: 10; }
+        .toggle-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--primary-color); margin-right: 20px; }
+        #breadcrumb { font-size: 0.9rem; font-weight: 500; color: #666; }
+        .content-area { flex: 1; overflow-y: auto; position: relative; background-color: #fff; }
         
-        /* Classe adicionada via JS durante a troca de diagrama */
-        #canvas.is-switching {
-            opacity: 0; /* Fade Out */
-            pointer-events: none;
-        }
-
-        /* Remove logo bpmn.io */
-        .bjs-powered-by { display: none !important; }
-
-        /* --- OVERLAY DE CARREGAMENTO (Spinner) --- */
-        #loading-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8); z-index: 50;
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;
-        }
-        #loading-overlay.active { opacity: 1; pointer-events: all; }
-        .spinner {
-            border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%;
-            width: 40px; height: 40px; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* --- CONTROLES E BOTÕES --- */
-        #back-btn {
-            position: absolute; top: 25px; left: 25px; padding: 10px 20px;
-            background: #fff; color: #333; border: 1px solid #ddd;
-            border-radius: 30px; cursor: pointer; display: none; z-index: 100;
-            font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            transition: all 0.2s; display: flex; align-items: center; gap: 8px;
-        }
-        #back-btn:hover { background: #f8f9fa; box-shadow: 0 6px 12px rgba(0,0,0,0.12); }
-
-        .zoom-controls {
-            position: absolute; bottom: 30px; right: 30px; z-index: 100;
-            display: flex; flex-direction: column; gap: 10px;
-            background: white; padding: 8px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #eee;
-        }
-        .zoom-btn {
-            width: 42px; height: 42px; background: white; border: none;
-            border-radius: 8px; font-size: 22px; cursor: pointer; color: #555;
-            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
-        }
-        .zoom-btn:hover { background: #f0f2f5; color: #222; }
-
-        /* --- DESTAQUE VISUAL NOS LINKS (Hover) --- */
-        .highlight-node .djs-visual > :first-child {
-            fill: #eff6ff !important; stroke: #2563eb !important; stroke-width: 3px !important; cursor: pointer !important;
+        /* Wiki Content */
+        #wiki-container { padding: 50px; max-width: 1000px; margin: 0 auto; line-height: 1.6; color: #444; }
+        #wiki-container h1 { color: var(--primary-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
+        
+        /* BPMN View */
+        #bpmn-view { width: 100%; height: 100%; }
+        #canvas { width: 100%; height: 100%; background: #fff; }
+        .hidden { display: none !important; }
+        .bjs-powered-by { display: none; }
+        .highlight-node .djs-visual > :first-child { fill: rgba(242, 101, 34, 0.1) !important; stroke: var(--accent-color) !important; stroke-width: 3px !important; cursor: pointer !important; }
+        .floating-btn { position: absolute; top: 20px; left: 20px; z-index: 999; padding: 10px 15px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: 600; color: var(--primary-color); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Modal de Aviso para Links Locais */
+        .copy-alert {
+            display: none; position: fixed; bottom: 20px; right: 20px; 
+            background: #333; color: #fff; padding: 15px; border-radius: 5px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 2000; font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h3>Mapas de Processo</h3>
-        <div id="file-list"></div>
-    </div>
-
-    <div id="main-content">
-        <div id="loading-overlay"><div class="spinner"></div></div>
-
-        <div id="canvas"></div>
-
-        <button id="back-btn">← Visão Geral</button>
-        
-        <div class="zoom-controls">
-            <button class="zoom-btn" id="btn-zoom-in" title="Aumentar">+</button>
-            <button class="zoom-btn" id="btn-reset" title="Centralizar">⟲</button>
-            <button class="zoom-btn" id="btn-zoom-out" title="Diminuir">-</button>
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            P. AVELAR <span class="logo-sub">HUB DE PROCESSOS</span>
         </div>
+        <div id="menu-container"></div>
+    </aside>
+
+    <main id="main-content">
+        <div class="top-bar">
+            <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+            <span id="breadcrumb">Início</span>
+        </div>
+
+        <div id="wiki-view" class="content-area">
+            <div id="wiki-container">
+                <h1 style="border:none;">Bem-vindo</h1>
+                <p>Selecione um item no menu lateral.</p>
+            </div>
+        </div>
+
+        <div id="bpmn-view" class="content-area hidden">
+            <div id="canvas"></div>
+            <button class="floating-btn" onclick="loadDefaultFlow()">⟲ Início</button>
+        </div>
+    </main>
+    
+    <div id="alert-box" class="copy-alert">
+        Caminho da pasta copiado! Cole no Explorer.
     </div>
 
     <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
+    
+    <script src="assets/js/links.js"></script> 
 
     <script>
-        // --- 1. CONFIGURAÇÃO ---
-        const homeFile = "assets/bpmn/arq-aprovacao acc-00-00.bpmn";
-        let currentUrl = "";
-        let isTransitioning = false;
-
-        const allFiles = [
-            { name: "Visão Geral (00-00)", url: homeFile },
-            { name: "Fluxo As Built (01-00)", url: "assets/bpmn/arq-aprovacao acc-01-00.bpmn" },
-            { name: "Fluxo Anteprojeto (01-01)", url: "assets/bpmn/arq-aprovacao acc-01-01.bpmn" },
-            { name: "Fluxo Executivo (01-02)", url: "assets/bpmn/arq-aprovacao acc-01-02.bpmn" }
-        ];
-
-        const nodeLinks = {
-            "as built": "assets/bpmn/arq-aprovacao acc-01-00.bpmn",
-            "anteprojeto": "assets/bpmn/arq-aprovacao acc-01-01.bpmn",
-            "ante-projeto": "assets/bpmn/arq-aprovacao acc-01-01.bpmn",
-            "executivo": "assets/bpmn/arq-aprovacao acc-01-02.bpmn"
-        };
-
-        // --- 2. INICIALIZAÇÃO DO VIEWER ---
-        const viewer = new BpmnJS({ 
-            container: '#canvas',
-            // ** CONFIGURAÇÃO IMPORTANTE DO ZOOM **
-            zoomScroll: {
-                enabled: true, // Habilita o módulo
-                toggle: false  // FALSE = Não exige segurar Ctrl para dar zoom com scroll
-            }
-        });
-
-        // --- 3. CARREGAMENTO COM TRANSIÇÃO ---
-        async function loadDiagram(url) {
-            if(currentUrl === url || isTransitioning) return;
-            isTransitioning = true;
-
-            // 3.1. Inicia Efeito de Transição (Fade Out)
-            const canvasEl = document.getElementById('canvas');
-            const loadingOverlay = document.getElementById('loading-overlay');
+        // --- 1. CONSTRUTOR DE MENU ---
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
             
-            canvasEl.classList.add('is-switching');
-            loadingOverlay.classList.add('active');
+            // Verificação de segurança caso o arquivo não tenha sido criado/movido corretamente
+            if (!window.CONFIG) {
+                container.innerHTML = `
+                    <div style='padding:20px; color:#ffaaaa; font-size:0.8rem;'>
+                        <strong>ERRO:</strong><br>
+                        Não encontrei o arquivo <code>assets/js/links.js</code>.<br><br>
+                        Certifique-se de criar a pasta 'js' dentro de 'assets' e mover o arquivo para lá.
+                    </div>`;
+                return;
+            }
 
-            // Pequeno delay para o CSS fade-out acontecer antes de carregar o pesado
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            try {
-                // 3.2. Carrega o arquivo
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Falha ao carregar arquivo');
-                const xml = await response.text();
+            window.CONFIG.menus.forEach(grupo => {
+                const section = document.createElement('div');
+                section.className = 'menu-section';
                 
-                // 3.3. Importa no Visualizador
-                await viewer.importXML(xml);
-                currentUrl = url;
+                const title = document.createElement('div');
+                title.className = 'menu-title';
+                title.innerHTML = `${grupo.titulo} <span>▼</span>`;
+                title.onclick = function() { this.nextElementSibling.classList.toggle('closed'); };
 
-                // 3.4. Ajusta o Zoom Inteligente
-                const canvasBPMN = viewer.get('canvas');
-                canvasBPMN.zoom('fit-viewport', 'auto'); 
-                const currentZoom = canvasBPMN.zoom();
-                // Se o fit deixou muito pequeno, força um tamanho mínimo legível
-                if (currentZoom < 0.9) {
-                    canvasBPMN.zoom(0.9, 'auto');
+                const ul = document.createElement('ul');
+                ul.className = 'menu-items closed';
+
+                grupo.itens.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerText = item.nome;
+                    
+                    if (item.tipo === 'acao_fluxo') {
+                        // Modo Fluxograma
+                        li.onclick = () => openFlows();
+                    } else {
+                        // Modo Link Normal
+                        li.onclick = () => handleLink(item.link, `${grupo.titulo} > ${item.nome}`);
+                    }
+                    ul.appendChild(li);
+                });
+
+                section.appendChild(title);
+                section.appendChild(ul);
+                container.appendChild(section);
+            });
+        }
+
+        // --- 2. GERENCIADOR DE LINKS INTELIGENTE ---
+        async function handleLink(url, breadcrumbTitle) {
+            const wikiView = document.getElementById('wiki-view');
+            const bpmnView = document.getElementById('bpmn-view');
+            const container = document.getElementById('wiki-container');
+
+            // Caso 1: Páginas HTML internas (Wiki)
+            if (url.endsWith('.html')) {
+                bpmnView.classList.add('hidden');
+                wikiView.classList.remove('hidden');
+                document.getElementById('breadcrumb').innerText = breadcrumbTitle;
+                
+                container.innerHTML = "<p style='color:#888;'>Carregando...</p>";
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error("404");
+                    container.innerHTML = await response.text();
+                } catch (e) {
+                    container.innerHTML = `<h2>Erro</h2><p>Não encontrei o arquivo: ${url}</p>`;
                 }
-
-                updateUIState(url);
-
-            } catch (err) {
-                console.error(err);
-                alert("Erro: " + err.message);
-            } finally {
-                // 3.5. Finaliza Transição (Fade In)
-                // Delay para garantir que o diagrama renderizou antes de mostrar
-                setTimeout(() => {
-                    canvasEl.classList.remove('is-switching');
-                    loadingOverlay.classList.remove('active');
-                    isTransitioning = false;
-                }, 200);
+            } 
+            // Caso 2: Pastas de Rede (G:) e Links Externos
+            else {
+                // Tenta abrir em nova aba
+                const win = window.open(url, '_blank');
+                
+                // Se for link local (G:) e não abrir (bloqueio do navegador), avisa o usuário
+                if (!win && (url.includes("G:") || url.includes("\\"))) {
+                    // Copia para área de transferência
+                    navigator.clipboard.writeText(url).then(() => {
+                        showAlert(`Navegador bloqueou a pasta. Caminho copiado: ${url}`);
+                    }).catch(() => {
+                        showAlert(`Abra manualmente: ${url}`);
+                    });
+                }
             }
         }
 
-        // --- 4. FUNÇÕES AUXILIARES DE UI ---
-        function updateUIState(url) {
-            // Menu Active
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                if(btn.dataset.url === url) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-            
-            // Botão Voltar
-            const backBtn = document.getElementById('back-btn');
-            backBtn.style.display = (url === homeFile) ? 'none' : 'flex';
-            backBtn.onclick = () => loadDiagram(homeFile);
+        function showAlert(msg) {
+            const box = document.getElementById('alert-box');
+            box.innerText = msg;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 4000);
         }
 
-        // --- 5. CONTROLES DE ZOOM MANUAIS ---
-        document.getElementById('btn-zoom-in').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('step-zoom-in'); });
-        document.getElementById('btn-zoom-out').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('step-zoom-out'); });
-        document.getElementById('btn-reset').addEventListener('click', (e) => { e.stopPropagation(); viewer.get('canvas').zoom('fit-viewport', 'auto'); });
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hide'); }
 
-        // --- 6. EVENTOS DE INTERAÇÃO (Hover/Click) ---
-        viewer.on('import.done', () => {
-            const eventBus = viewer.get('eventBus');
-            const canvas = viewer.get('canvas');
+        // --- 3. LÓGICA BPMN ---
+        let bpmnViewer = null;
 
-            eventBus.on('element.hover', function(e) {
-                const name = getElementName(e.element);
-                if (name && nodeLinks[name]) canvas.addMarker(e.element.id, 'highlight-node');
-            });
-
-            eventBus.on('element.out', function(e) {
-                canvas.removeMarker(e.element.id, 'highlight-node');
-            });
-
-            eventBus.on('element.click', function(e) {
-                const name = getElementName(e.element);
-                if (name && nodeLinks[name]) loadDiagram(nodeLinks[name]);
-            });
-        });
-
-        function getElementName(element) {
-            if (!element.businessObject || !element.businessObject.name) return null;
-            return element.businessObject.name.toLowerCase().trim();
+        function openFlows() {
+            document.getElementById('wiki-view').classList.add('hidden');
+            document.getElementById('bpmn-view').classList.remove('hidden');
+            document.getElementById('breadcrumb').innerText = "Fluxo de Processos";
+            if(bpmnViewer) bpmnViewer.get('canvas').zoom('fit-viewport');
         }
 
-        // --- 7. GERAÇÃO DO MENU ---
-        const fileList = document.getElementById('file-list');
-        allFiles.forEach(file => {
-            const btn = document.createElement('div');
-            btn.className = 'nav-btn';
-            btn.innerText = file.name;
-            btn.dataset.url = file.url;
-            btn.onclick = () => loadDiagram(file.url);
-            fileList.appendChild(btn);
+        async function loadFlow(url) {
+            try {
+                const res = await fetch(url);
+                if(!res.ok) throw new Error("Erro BPMN");
+                const xml = await res.text();
+                await bpmnViewer.importXML(xml);
+                bpmnViewer.get('canvas').zoom('fit-viewport');
+            } catch(e) { console.error(e); }
+        }
+
+        function loadDefaultFlow() {
+            if(window.CONFIG && window.CONFIG.fluxogramas) {
+                loadFlow(window.CONFIG.fluxogramas.inicial);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMenu();
+
+            if(typeof BpmnJS !== 'undefined') {
+                bpmnViewer = new BpmnJS({ container: '#canvas' });
+                loadDefaultFlow();
+
+                const eventBus = bpmnViewer.get('eventBus');
+                const canvas = bpmnViewer.get('canvas');
+
+                eventBus.on('element.click', function(e) {
+                    const name = e.element.businessObject.name?.toLowerCase().trim();
+                    // Proteção caso o arquivo de config não tenha carregado
+                    if (window.CONFIG && window.CONFIG.fluxogramas) {
+                        const links = window.CONFIG.fluxogramas.links;
+                        if(name && links[name]) loadFlow(links[name]);
+                    }
+                });
+                
+                eventBus.on('element.hover', function(e) {
+                    const name = e.element.businessObject.name?.toLowerCase().trim();
+                    if (window.CONFIG && window.CONFIG.fluxogramas) {
+                        const links = window.CONFIG.fluxogramas.links;
+                        if(name && links[name]) canvas.addMarker(e.element.id, 'highlight-node');
+                    }
+                });
+                eventBus.on('element.out', function(e) { canvas.removeMarker(e.element.id, 'highlight-node'); });
+            }
         });
-
-        // Início Automático
-        loadDiagram(homeFile);
-
     </script>
 </body>
 </html>
